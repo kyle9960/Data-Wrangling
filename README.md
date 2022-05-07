@@ -5,12 +5,12 @@ Customer Behaviour Data Analysis
 
 There are five files in our directory
 
-1. Original Data
+1. Original Data(market_campaign.csv)
 
-2. Tidy Data
+2. Tidy Data(tidy_marketing.csv)
 
-3. R code in .Rmd
+3. R code(Marketing Data Analysis.rmd)
 
-4. Project report(.pdf)
+4. Project report(Marketing Data Analysis.html)
 
-5. Presentation Slide
+5. Presentation Slide(Customer Personality Analysis.pptx)
