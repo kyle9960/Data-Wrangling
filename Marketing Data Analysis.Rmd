@@ -1,0 +1,539 @@
+---
+title: "Customer Personality Analysis"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Introduction
+
+We are a team focus on the detailed analysis of a company’s ideal customers. Our team strives to help company and business to modify products for customers with special needs. This dataset includes 27 features. 
+
+## Variable Description
+
+We can roughly categorized variable as 4 higher level group to describe the data: 
+
+People(Age, marital status, kids number…)
+
+Product(Amount of spend on each product category last 2 year…)
+
+Promotion(number of deals using promotion)
+
+Places(where did customer purchases, online or in store)
+
+## Project Goal
+Our goal is to perform clustering to summarize customer segments. We are achieving the goal through three steps: data cleaning, exploratory data analysis(EDA), and segmentation.
+
+# Data Cleaning
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+library(naniar)
+library(gridExtra)
+library(lubridate)
+```
+
+```{r 1.1.1}
+df <- read.delim("marketing_campaign.csv", stringsAsFactors = FALSE)
+head(df)
+```
+
+
+```{r 1.1.2}
+dim(df)
+```
+
+```{r 1.1.3}
+summary(df)
+```
+## Missing Values
+```{r 1.2.1}
+# Counting the total number of missing values and each variables in the data
+n_miss(df)
+miss_var_summary(df)
+```
+Notice that income is the only variable with missing data problem, we will just drop the customer data point with missing data. 
+```{r 1.2.2}
+# Drop NA values
+df_customers <- na.omit(df)
+dim(df_customers)
+```
+
+## Outliers
+The variable Year_Birth gives us the birth year of customers, which is not very intuitive. So we create a new variable Age. 
+```{r 1.3.1}
+# Creating a new variable Age from Year of Birth 
+customers_unfilter <- df_customers %>% 
+  mutate(Age = 2022 - Year_Birth)
+customers_unfilter %>% 
+  select(Age) %>% 
+  arrange(desc(Age)) %>% 
+  top_n(10)
+# identify the outliers
+g1=ggplot(customers_unfilter, aes(y = Age)) + geom_boxplot(outlier.colour = 'red') 
+g2=ggplot(customers_unfilter, aes(y = Income)) + geom_boxplot(outlier.colour = 'red',fill='#FFDD00') 
+g3=ggplot(customers_unfilter, aes(x = Age)) + geom_histogram(fill='black')
+g4=ggplot(customers_unfilter, aes(x = Income)) + geom_histogram(fill='#FFDD00')
+grid.arrange(g1, g2, g3, g4, ncol=2)
+```
+
+```{r 1.3.2}
+# Max Age is > 100 
+# Dropping outliers by setting a cap on Income and Age
+customers <- customers_unfilter %>% 
+  filter(Income < 600000 & Age < 90)
+dim(customers)
+```
+
+```{r 1.3.3}
+unique(customers$Marital_Status)
+```
+
+## Collapsing Features
+Some features have too many unnecessary categories, we can convert to only two categories. 
+```{r 1.4.1}
+# Collapsing marital Status into two categories: Single & Taken
+
+customers <- customers %>% 
+  mutate(Marital_Status = 
+           replace(Marital_Status,
+                   Marital_Status == "Divorced" | Marital_Status == "Widow" | 
+                     Marital_Status == "Alone" | Marital_Status == "Absurd" | 
+                     Marital_Status == "YOLO", 
+                   "Single"))
+customers <- customers %>% 
+  mutate(Marital_Status = 
+           replace(Marital_Status,
+                   Marital_Status == "Together" | Marital_Status == "Married", 
+                   "Taken"))
+```
+
+```{r 1.4.2}
+# Collapsing the Education into two Categories: graduate and non-graduate
+unique(customers$Education)
+customers <- customers %>% 
+  mutate(Education = 
+           replace(Education, Education == "Graduation"| Education == "PhD" | 
+                     Education == "Master" | Education == "2n Cycle",
+                   "graduate"))
+customers <- customers %>% 
+  mutate(Education = 
+           replace(Education, Education == "Basic", "non-graduate"))
+```
+
+```{r 1.4.3}
+# Converting them to factors
+customers <- customers %>% 
+  mutate(Marital_Status = as.factor(Marital_Status), 
+         Education = as.factor(Education))
+```
+
+## Renaming Features
+```{r 1.5.1}
+# Renaming the Mnt_ features
+customers <- customers %>% 
+  rename(wines = MntWines, fruits = MntFruits, meat = MntMeatProducts, 
+         fish = MntFishProducts, sweet = MntSweetProducts, gold = MntGoldProds, 
+         webpurchase = NumWebPurchases, catalog = NumCatalogPurchases, 
+         Store = NumStorePurchases, webvisit = NumWebVisitsMonth, 
+         dealpurchase = NumDealsPurchases)
+```
+
+```{r 1.5.2}
+# Creating a new variable:Total_spent
+customers <- customers %>% 
+  mutate(Total_spent = wines + fruits + meat + fish + sweet + gold) %>%
+  mutate(Total_num = webpurchase + catalog + Store + dealpurchase)
+```
+
+```{r 1.5.3}
+# Creating a new variable:kids
+customers <- customers %>% 
+  mutate(Kids = Kidhome + Teenhome)
+```
+
+```{r 1.5.4}
+#Dropping some redundant features
+customers <- customers %>% 
+  select(- ID, - Year_Birth, - Dt_Customer, - Z_CostContact, 
+         - Z_Revenue, - Kidhome, - Teenhome)
+str(customers)
+head(customers, n = 5)
+```
+
+# EDA
+## 1. Marital Status
+```{r 2.1.1}
+ggplot(customers, aes(x=Marital_Status, fill=Marital_Status)) + 
+  geom_bar() + ggtitle("Marital Status")
+g1=ggplot(customers, mapping=aes(x=Education)) + 
+  geom_bar(fill = "lightblue") + ggtitle("Education Level")
+```
+
+## 2. Education
+```{r 2.1.2}
+g2=ggplot(customers, aes(x=Education, y=Income)) + 
+  geom_boxplot(fill = "pink") + ggtitle("Income vs. Education Level")
+grid.arrange(g1, g2, ncol=2)
+```
+
+## 3. Income 
+```{r 2.1.3}
+g1=ggplot(customers, aes(x=Income, y=Total_spent)) + 
+  geom_point(col='Sky Blue 3')+
+  scale_x_continuous()+
+  ggtitle("Total Amount Spent vs. Income")
+g2=ggplot(customers, aes(x=Income, y=Total_num)) + 
+  geom_point(col='Sky Blue 3')+
+  scale_x_continuous()+
+  ggtitle("Total Num vs. Income")
+grid.arrange(g1, g2, ncol=2)
+```
+
+## 4. Products 
+```{r 2.1.4}
+g1 <- ggplot(customers, aes(x = wines)) +
+  geom_histogram(fill = "Sky Blue 3", binwidth = 10)+
+  scale_x_continuous(breaks = seq(0, 1600, 100)) +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+g2 <- ggplot(customers, aes(x = fruits)) +
+  geom_histogram(fill = "Sky Blue 3", binwidth = 10)+
+  scale_x_continuous(breaks = seq(0, 250, 20))
+g3 <- ggplot(customers, aes(x = meat)) +
+  geom_histogram(fill = "Sky Blue 3", binwidth = 10)+
+  scale_x_continuous(breaks = seq(0, 1800, 200)) +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+g4 <- ggplot(customers, aes(x = fish)) +
+  geom_histogram(fill = "Sky Blue 3", binwidth = 10)+
+  scale_x_continuous(breaks = seq(0, 300, 50))
+g5 <- ggplot(customers, aes(x = sweet)) +
+  geom_histogram(fill = "Sky Blue 3", binwidth = 10)+
+  scale_x_continuous(breaks = seq(0, 300, 20)) +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+g6 <- ggplot(customers, aes(x = gold)) +
+  geom_histogram(fill = "Sky Blue 3", binwidth = 10)+
+  scale_x_continuous(breaks = seq(0, 400, 50)) +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+g7 <- ggplot(customers, aes(x = Total_spent)) +
+  geom_histogram(fill = "Sky Blue 3", binwidth = 10)+
+  scale_x_continuous(breaks = seq(0, 3000, 100)) +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+g8 <- ggplot(customers)+
+  geom_density(aes(x = wines), color = "Red", fill = 0.7)+
+  geom_density(aes(x = fruits), color = "Orange", fill = 0.7)+
+  geom_density(aes(x = meat), color = "Blue", fill = 0.7)+
+  geom_density(aes(x = fish), color = "Green", fill = 0.7)+
+  geom_density(aes(x = sweet), color = "Black", fill = 0.7)+
+  geom_density(aes(x = gold), color = "Sky Blue 3", fill = 0.7)+
+  coord_cartesian(xlim = c(0, 500))+
+  xlab("")
+
+grid.arrange(g1, g2, g3, g4, g5, g6, g7, g8, ncol=4)
+```
+
+## 5. Corrgram
+```{r 2.1.5}
+library(corrplot)
+
+#Getting correlation matrix 
+cust_cor <- cor(customers[,3:26])
+corrplot(cust_cor, 
+         method = "color", 
+         type = "upper")
+         # order = "hclust", 
+         # col = brewer.pal(n=10, name="RdYlBu"))
+# png(file="corr.png", res=300, width=4500, height=4500)
+# dev.off()
+```
+
+## Categorical Data
+```{r 2.2}
+# Encoding the categorical features to numeric
+customers_copy <- customers
+
+customers_copy <- customers_copy %>% 
+  mutate(Education = case_when(
+    Education == "graduate" ~ 1, Education == "non-graduate" ~ 0))
+customers_copy <- customers_copy %>% 
+  mutate(Marital_Status = case_when(
+    Marital_Status == "Taken" ~ 1, Marital_Status == "Single" ~ 0))
+
+str(customers_copy$Education)
+str(customers_copy$Marital_Status)
+dim(customers_copy)
+```
+
+```{r 2.3.1}
+# glimpse(customers_copy)
+```
+
+```{r 2.3.2}
+miss_var_summary(customers_copy)
+```
+
+# Segmentation
+## Pre-processing Data
+```{r 3.1}
+library(caret)
+# preprocessing the data
+customers_copy_pre <- 
+  preProcess(customers_copy[,c(3:15, 23:25)], method = c("center", "scale"))
+
+# normalizing 
+customers_copy <- predict(customers_copy_pre, customers_copy[,c(3:15, 23:25)])
+summary(customers_copy)
+```
+
+## PCA: Dimensionality Reduction
+We use PCA as the segmentation method in this part, it is an unsupervised learning method.
+
+Firstly, we need to standardize some of the features for PCA: Centering and Scaling
+
+We anticipate to have 2 or 3 specific customer groups for the results
+```{r 3.2}
+library(FactoMineR)
+library(factoextra)
+
+#Running a PCA.
+customers_copy_pca <- PCA(customers_copy, graph = FALSE)
+
+#Exploring PCA()
+
+# Getting the summary of the pca
+summary(customers_copy_pca)
+
+#Getting the variance of the first 8 new dimensions
+customers_copy_pca$eig[,2][1:8]
+
+#Getting the cummulative variance
+customers_copy_pca$eig[,3][1:8]
+
+#Tracing variable contributions in customers_pca
+customers_copy_pca$var$contrib
+```
+
+
+### Visualizing PCA
+#### 1. Eigenvalues/variances vs. the Number of Dimensions
+
+
+```{r 3.3.1}
+# Plot the eigenvalues/variances against the number of dimensions
+fviz_screeplot(customers_copy_pca, ncp=5)
+```
+
+
+#### 2. Variable Contributions
+
+
+```{r 3.3.2}
+#Creating a factor map for the variable contributions
+fviz_pca_var(customers_copy_pca, 
+             col.circle = 'black',
+             col.var = "contrib", 
+             gradient.cols = c("red", "green"), 
+             repel = TRUE)
+```
+
+#### 3. Top 5 Variable Contributions
+
+```{r 3.3.3}
+#Creating a factor map for the top 5 variables with the highest contributions.
+fviz_pca_var(customers_copy_pca, 
+             select.var = list(contrib = 5), 
+             col.var = "contrib",
+             gradient.cols = c("green", "blue"), 
+             repel = TRUE)
+```
+
+
+#### 4. Top 5 Variable Contributions in Barplot
+
+
+```{r 3.3.4}
+fviz_contrib(customers_copy_pca, choice = "var", axes = 1, top = 5)
+```
+
+
+#### 5. Graph of Individuals
+
+
+```{r 3.3.5}
+fviz_pca_ind(customers_copy_pca, col.ind="cos2") +
+  scale_color_gradient2(low="blue", mid="white",high="red", midpoint=0.50)
+```
+
+#### 6. Biplot
+
+```{r 3.3.6}
+fviz_pca_biplot(customers_copy_pca, col.ind = 'dark grey')
+```
+
+
+#### 7. Hierarchical Cluster
+
+```{r 3.3.7}
+Distance <- dist(customers_copy, method = 'euclidean')
+hplot<-hclust(Distance, method='complete')
+plot(hplot, hang = -1, cex = 0.6)
+```
+
+
+## K-Means Clustering
+
+```{r 3.4.1}
+#The elbow method to find cluster number with kmean method
+library(purrr)
+tot_withinss <- map_dbl(1:10, function(k){
+  model <- kmeans(x = customers_copy, centers = k)
+  model$tot.withinss
+})
+
+elbow_df <- data.frame(
+       k = 1:10,
+       tot_withinss = tot_withinss)
+head(elbow_df)
+#plotting the elbow plot
+ggplot(elbow_df, aes(k, tot_withinss)) + 
+  geom_line(col='blue') + 
+  scale_x_continuous(breaks = 1:10)+
+  geom_vline(xintercept=3,linetype=2)
+#plot elbow with package function
+fviz_nbclust(customers_copy,kmeans,method="wss")+
+  geom_vline(xintercept=3,linetype=2)
+```
+
+
+```{r 3.4.2}
+library(ggfortify); library(ggplot2)
+
+set.seed(1313)
+res_kmeans <- kmeans(customers_copy, centers = 3, nstart = 10)
+# autoplot(res_kmeans, data=customers_copy)
+fviz_cluster(res_kmeans, 
+             customers_copy, 
+             geom = "point",
+             ellipse.type = "norm",
+             repel = TRUE)
+```
+
+
+```{r 3.4.3}
+set.seed(3)
+
+#Building a k-means model with a k of 2
+customers_md <- kmeans(customers_copy, center = 3)
+
+#Extracting the vector of cluster assignment from the model
+clust_customers <- as.factor(customers_md$cluster)
+
+#Building the segment_customers dataframe
+segment_customers <- mutate(customers_copy, cluster = clust_customers)
+
+#Calculating the mean for each category
+count(segment_customers, cluster)
+
+
+#Adding the cluster variable to the original dataframe
+customers <- customers %>% mutate(cluster = segment_customers$cluster)
+head(customers, n = 3)
+#confirming
+count(customers, cluster)
+```
+
+
+### Segmenting Results
+
+```{r 3.5}
+g1=ggplot(data = customers, aes(x = cluster, y = Income, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g2=ggplot(data = customers, aes(x = cluster, y = Recency, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g111=ggplot(data = customers, aes(x = cluster, y = Age, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g112=ggplot(data = customers, aes(x = cluster, y = Kids, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g3=ggplot(data = customers, aes(x = cluster, y = wines, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g4=ggplot(data = customers, aes(x = cluster, y = fruits, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g5=ggplot(data = customers, aes(x = cluster, y = meat, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g6=ggplot(data = customers, aes(x = cluster, y = fish, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g7=ggplot(data = customers, aes(x = cluster, y = sweet, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g8=ggplot(data = customers, aes(x = cluster, y = gold, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g9=ggplot(data = customers, aes(x = cluster, y = dealpurchase, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g10=ggplot(data = customers, aes(x = cluster, y = webpurchase, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g11=ggplot(data = customers, aes(x = cluster, y = catalog, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g12=ggplot(data = customers, aes(x = cluster, y = Store, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+g13=ggplot(data = customers, aes(x = cluster, y = Total_num, fill = cluster))+
+  geom_boxplot() + 
+  theme(legend.position = "none")
+
+grid.arrange(g1, g2, g111, g112, ncol=2)
+grid.arrange(g3, g4, g5, g6, g7, g8, ncol=3)
+grid.arrange(g9, g10, g11, g12, g13, ncol=3)
+```
+
+# Conclusion
+
+Basically, from the k-means clustering, we can separate customers into three groups with the following characteristics:
+
+Cluster 1: 
+
+Low purchasing power customer
+
+No wine/meat
+
+More recency
+
+Cluster 2: 
+
+prefer deal/web
+
+Cluster 3: 
+
+High purchasing power
+
+Prefer catalog/store
+
+Purchasing more product
+
