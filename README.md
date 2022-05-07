@@ -11,6 +11,6 @@ There are five files in our directory
 
 3. R code(Marketing Data Analysis.rmd)
 
-4. Project report(Marketing Data Analysis.html)
+4. Project report(Marketing Data Analysis.html or Marketing Data Analysis.pdf)
 
 5. Presentation Slide(Customer Personality Analysis.pptx)
