@@ -1,7 +1,7 @@
 # Data-Wrangling
 
 
-Customer Behaviour Data Analysis
+Customer Personality Data Analysis
 
 There are five files in our directory
 
