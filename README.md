@@ -3,7 +3,7 @@
 
 Customer Behaviour Data Analysis
 
-There are four files in our directory
+There are five files in our directory
 
 1. Original Data
 
