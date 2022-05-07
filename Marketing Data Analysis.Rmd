@@ -34,6 +34,10 @@ library(dplyr)
 library(naniar)
 library(gridExtra)
 library(lubridate)
+library(FactoMineR)
+library(factoextra)
+library(ggfortify)
+library(ggplot2)
 ```
 
 ```{r 1.1.1}
@@ -295,9 +299,6 @@ Firstly, we need to standardize some of the features for PCA: Centering and Scal
 
 We anticipate to have 2 or 3 specific customer groups for the results
 ```{r 3.2}
-library(FactoMineR)
-library(factoextra)
-
 #Running a PCA.
 customers_copy_pca <- PCA(customers_copy, graph = FALSE)
 
@@ -411,7 +412,7 @@ We can see that two way of the scree plot methods will plot the same result. And
 
 
 ```{r 3.4.2}
-library(ggfortify); library(ggplot2)
+
 
 set.seed(1313)
 res_kmeans <- kmeans(customers_copy, centers = 3, nstart = 10)
