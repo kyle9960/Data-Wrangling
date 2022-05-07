@@ -234,7 +234,7 @@ g8 <- ggplot(customers)+
 grid.arrange(g1, g2, g3, g4, g5, g6, g7, g8, ncol=4)
 ```
 
-## 5. Corrgram
+## 5. Correlation Plot
 ```{r 2.1.5}
 library(corrplot)
 
@@ -248,6 +248,7 @@ corrplot(cust_cor,
 # png(file="corr.png", res=300, width=4500, height=4500)
 # dev.off()
 ```
+Here, based on the correlation plot, we could find that AcceptCmp*(1 if customer accepted the offer in the 1st campaign, 0 otherwise) are very much likely not to have any correlation with other variables, thus, we will remove these when we do the segementation. Secondly, there are some interesting findings. For example, the Income is highly negativly related to webvisit, while dealpurchase seems like the only variable to have the positive relationship with webvist. It could tell us people who like are not with high income usually will go to website to to some deal searching. And it is consistant result with our real world problem.
 
 ## Categorical Data
 ```{r 2.2}
@@ -278,7 +279,7 @@ miss_var_summary(customers_copy)
 ## Pre-processing Data
 ```{r 3.1}
 library(caret)
-# preprocessing the data
+# preprocessing the data, use numerical data to do dimension reduction
 customers_copy_pre <- 
   preProcess(customers_copy[,c(3:15, 23:25)], method = c("center", "scale"))
 
@@ -324,6 +325,7 @@ customers_copy_pca$var$contrib
 # Plot the eigenvalues/variances against the number of dimensions
 fviz_screeplot(customers_copy_pca, ncp=5)
 ```
+In this plot, we could find that the first principal component will explain about 46% variance, second principal component is about 11% and the third principal component is about 6%. Thus, we will use first two principal component to do the following analysis.
 
 
 #### 2. Variable Contributions
@@ -405,6 +407,7 @@ ggplot(elbow_df, aes(k, tot_withinss)) +
 fviz_nbclust(customers_copy,kmeans,method="wss")+
   geom_vline(xintercept=3,linetype=2)
 ```
+We can see that two way of the scree plot methods will plot the same result. And we will choose three as the cluster number.
 
 
 ```{r 3.4.2}
@@ -523,17 +526,26 @@ Low purchasing power customer
 
 No wine/meat
 
-More recency
+time gap between the going to market is large
+
+have more kids
 
 Cluster 2: 
 
-prefer deal/web
+Median purchasing power customer
+
+prefer deal/web, but have some level of purchasing potential
+
+love buying wines and gold
 
 Cluster 3: 
 
-High purchasing power
+High purchasing power customer
 
 Prefer catalog/store
 
 Purchasing more product
 
+# Future steps
+
+We will explore factor analysis which is one of the most populare analysis technique in market analysis
