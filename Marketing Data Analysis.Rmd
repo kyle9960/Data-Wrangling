@@ -1,8 +1,8 @@
 ---
 title: "Customer Personality Analysis"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -318,8 +318,8 @@ customers_copy_pca$var$contrib
 ```
 
 
-### Visualizing PCA
-#### 1. Eigenvalues/variances vs. the Number of Dimensions
+## Visualizing PCA
+### 1. Eigenvalues/variances vs. the Number of Dimensions
 
 
 ```{r 3.3.1}
@@ -329,7 +329,8 @@ fviz_screeplot(customers_copy_pca, ncp=5)
 In this plot, we could find that the first principal component will explain about 46% variance, second principal component is about 11% and the third principal component is about 6%. Thus, we will use first two principal component to do the following analysis.
 
 
-#### 2. Variable Contributions
+
+### 2. Variable Contributions(loading plots)
 
 
 ```{r 3.3.2}
@@ -340,8 +341,11 @@ fviz_pca_var(customers_copy_pca,
              gradient.cols = c("red", "green"), 
              repel = TRUE)
 ```
+Age and recency are have the lowest contribution, while total spentand total number has the largest
 
-#### 3. Top 5 Variable Contributions
+
+
+### 3. Top 5 Variable Contributions
 
 ```{r 3.3.3}
 #Creating a factor map for the top 5 variables with the highest contributions.
@@ -353,7 +357,7 @@ fviz_pca_var(customers_copy_pca,
 ```
 
 
-#### 4. Top 5 Variable Contributions in Barplot
+### 4. Top 5 Variable Contributions in Barplot
 
 
 ```{r 3.3.4}
@@ -361,7 +365,7 @@ fviz_contrib(customers_copy_pca, choice = "var", axes = 1, top = 5)
 ```
 
 
-#### 5. Graph of Individuals
+### 5. Graph of Individuals(Score plot)
 
 
 ```{r 3.3.5}
@@ -369,20 +373,14 @@ fviz_pca_ind(customers_copy_pca, col.ind="cos2") +
   scale_color_gradient2(low="blue", mid="white",high="red", midpoint=0.50)
 ```
 
-#### 6. Biplot
+### 6. Biplot
 
 ```{r 3.3.6}
 fviz_pca_biplot(customers_copy_pca, col.ind = 'dark grey')
 ```
+Biplot is the combination of score plot and loading plot
 
 
-#### 7. Hierarchical Cluster
-
-```{r 3.3.7}
-Distance <- dist(customers_copy, method = 'euclidean')
-hplot<-hclust(Distance, method='complete')
-plot(hplot, hang = -1, cex = 0.6)
-```
 
 
 ## K-Means Clustering
